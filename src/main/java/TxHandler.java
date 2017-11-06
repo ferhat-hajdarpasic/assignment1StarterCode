@@ -1,4 +1,11 @@
+import Transaction.Input;
+import java.security.PublicKey;
+import java.util.HashSet;
+import java.util.Set;
+
 public class TxHandler {
+
+    private UTXOPool utxoPool;
 
     /**
      * Creates a public ledger whose current UTXOPool (collection of unspent transaction outputs) is
@@ -6,7 +13,7 @@ public class TxHandler {
      * constructor.
      */
     public TxHandler(UTXOPool utxoPool) {
-        // IMPLEMENT THIS
+        this.utxoPool = utxoPool;
     }
 
     /**
@@ -19,10 +26,65 @@ public class TxHandler {
      *     values; and false otherwise.
      */
     public boolean isValidTx(Transaction tx) {
-        return false;
+        return 
+            allOutputsClaimedByTxAreInTheCurrentUTXOPool(tx) && 
+            theSignaturesOnEachInputOfTxAreValid(tx) && 
+            noUtxoIsClaimedMultipleTimesByTx(tx) &&
+            allOfTxOutputValuesAreNonNegative(tx) &&
+            sumOfTxInputValuesIsGreaterThanOrEqualToTheSumOfItsOutputValues(tx);
     }
 
-    /**
+    private boolean allOutputsClaimedByTxAreInTheCurrentUTXOPool(Transaction tx) {
+        return tx.getInputs().stream().allMatch(input -> {
+            UTXO utxo = new UTXO(input.prevTxHash, input.outputIndex);
+            return utxoPool.contains(utxo);
+        });
+	}
+
+    private boolean theSignaturesOnEachInputOfTxAreValid(Transaction tx) {
+        return tx.getInputs().stream().allMatch(input -> {
+            PublicKey address = getInputCoinOwner(input);
+            return Crypto.verifySignature(address, tx.getHash(), input.signature);
+        });
+	}
+
+    private boolean noUtxoIsClaimedMultipleTimesByTx(Transaction tx) {
+        Set<UTXO> utxoInThisTransaction = new HashSet<UTXO>();
+        return tx.getInputs().stream().allMatch(input -> {
+            UTXO utxo = new UTXO(input.prevTxHash, input.outputIndex);
+            return !utxoInThisTransaction.add(utxo);
+        });
+	}
+
+    private boolean allOfTxOutputValuesAreNonNegative(Transaction tx) {
+        return tx.getOutputs().stream().allMatch(output -> {
+            return output.value > 0;
+        });
+    }
+    
+    private boolean sumOfTxInputValuesIsGreaterThanOrEqualToTheSumOfItsOutputValues(Transaction tx) {
+        return sumOfInputs(tx) >= sumOfOutputs(tx);
+    }
+
+    private double sumOfInputs(Transaction tx) {
+        return tx.getInputs().stream().mapToDouble(input -> {
+            UTXO utxo = new UTXO(input.prevTxHash, input.outputIndex);
+            return utxoPool.getTxOutput(utxo).value;
+        }).sum();
+    }
+    
+    private double sumOfOutputs(Transaction tx) {
+        return tx.getOutputs().stream().mapToDouble(output -> {
+            return output.value;
+        }).sum();
+    }
+    
+    private PublicKey getInputCoinOwner(Transaction.Input input) {
+        Transaction.Output inputCameFromOutput = utxoPool.getTxOutput(new UTXO(input.prevTxHash, input.outputIndex));
+		return inputCameFromOutput.address;
+	}
+
+	/**
      * Handles each epoch by receiving an unordered array of proposed transactions, checking each
      * transaction for correctness, returning a mutually valid array of accepted transactions, and
      * updating the current UTXO pool as appropriate.
