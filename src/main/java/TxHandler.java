@@ -1,6 +1,8 @@
 import Transaction.Input;
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class TxHandler {
@@ -90,7 +92,29 @@ public class TxHandler {
      * updating the current UTXO pool as appropriate.
      */
     public Transaction[] handleTxs(Transaction[] possibleTxs) {
-        return null;
+        List<Transaction> result = new ArrayList<Transaction>();
+        for(Transaction tx : possibleTxs) {
+            if(this.isValidTx(tx)) {
+                removeConsumedOutputs(tx);
+                registerCreatedOutputs(tx);
+                result.add(tx);
+            }
+        }
+        return result.toArray(new Transaction[0]);
     }
+
+	private void registerCreatedOutputs(Transaction tx) {
+		for(int outputIndex = 0; outputIndex < tx.getOutputs().size(); outputIndex++) {
+            UTXO utxo = new UTXO(tx.getHash(), outputIndex);
+            utxoPool.addUTXO(utxo, tx.getOutputs().get(outputIndex));                    
+        }
+	}
+
+	private void removeConsumedOutputs(Transaction tx) {
+		tx.getInputs().stream().forEach(input -> {
+            UTXO utxo = new UTXO(input.prevTxHash, input.outputIndex);
+            utxoPool.removeUTXO(utxo);;
+        });
+	}
 
 }
