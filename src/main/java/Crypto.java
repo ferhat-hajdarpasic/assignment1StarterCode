@@ -26,7 +26,8 @@ public class Crypto {
         }
         try {
             sig.update(message);
-            return sig.verify(signature);
+            boolean r = sig.verify(signature);
+            return r;
         } catch (SignatureException e) {
             e.printStackTrace();
         }

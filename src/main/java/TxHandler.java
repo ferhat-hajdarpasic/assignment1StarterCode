@@ -45,7 +45,7 @@ public class TxHandler {
     private boolean theSignaturesOnEachInputOfTxAreValid(Transaction tx) {
         return tx.getInputs().stream().allMatch(input -> {
             PublicKey address = getInputCoinOwner(input);
-            return Crypto.verifySignature(address, tx.getHash(), input.signature);
+            return Crypto.verifySignature(address, tx.getRawDataToSign(input.outputIndex), input.signature);
         });
 	}
 
@@ -53,18 +53,20 @@ public class TxHandler {
         Set<UTXO> utxoInThisTransaction = new HashSet<UTXO>();
         return tx.getInputs().stream().allMatch(input -> {
             UTXO utxo = new UTXO(input.prevTxHash, input.outputIndex);
-            return !utxoInThisTransaction.add(utxo);
+            return utxoInThisTransaction.add(utxo);
         });
 	}
 
     private boolean allOfTxOutputValuesAreNonNegative(Transaction tx) {
         return tx.getOutputs().stream().allMatch(output -> {
-            return output.value > 0;
+            return output.value >= 0;
         });
     }
     
     private boolean sumOfTxInputValuesIsGreaterThanOrEqualToTheSumOfItsOutputValues(Transaction tx) {
-        return sumOfInputs(tx) >= sumOfOutputs(tx);
+        double sumOfInputs = sumOfInputs(tx);
+        double sumOfOutputs = sumOfOutputs(tx);
+        return sumOfInputs >= sumOfOutputs;
     }
 
     private double sumOfInputs(Transaction tx) {
