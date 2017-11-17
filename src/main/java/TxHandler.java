@@ -43,10 +43,14 @@ public class TxHandler {
 	}
 
     private boolean theSignaturesOnEachInputOfTxAreValid(Transaction tx) {
-        return tx.getInputs().stream().allMatch(input -> {
+        for(int inputIndex = 0; inputIndex < tx.getInputs().size(); inputIndex++) {
+            Transaction.Input input = tx.getInputs().get(inputIndex);
             PublicKey address = getInputCoinOwner(input);
-            return Crypto.verifySignature(address, tx.getRawDataToSign(input.outputIndex), input.signature);
-        });
+            if(!Crypto.verifySignature(address, tx.getRawDataToSign(inputIndex), input.signature)) {
+                return false;
+            }
+        }
+        return true;
 	}
 
     private boolean noUtxoIsClaimedMultipleTimesByTx(Transaction tx) {
