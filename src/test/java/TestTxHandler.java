@@ -133,10 +133,14 @@ class TestIsValidTx {
     }
 
     private void signTx(Transaction tx, KeyPair keyPair, int input) {
-        PrivateKey privateKey = keyPair.getPrivate();
         byte[] message = tx.getRawDataToSign(input);
+        signTx(tx, keyPair, input, message);
+    }
+
+    private void signTx(Transaction tx, KeyPair keyPair, int input, byte[] message) {
         try {
             Signature sig = Signature.getInstance("SHA256withRSA");
+            PrivateKey privateKey = keyPair.getPrivate();
             sig.initSign(privateKey);
             sig.update(message);
             byte[] signature = sig.sign();
@@ -151,6 +155,7 @@ class TestIsValidTx {
             throw new RuntimeException(e);
         }
     }
+
 
     public int test2() {
         System.out.println("Test 2: test isValidTx() with transactions containing signatures of incorrect data");
@@ -191,7 +196,7 @@ class TestIsValidTx {
                     rawData[0]++;
                     uncorrupted = false;
                 }
-                signTx(tx, utxoToKeyPair.get(utxoAtIndex.get(j)), j);
+                signTx(tx, utxoToKeyPair.get(utxoAtIndex.get(j)), j, rawData);
             }
             tx.finalize();
             if (txHandler.isValidTx(tx) != uncorrupted) {
